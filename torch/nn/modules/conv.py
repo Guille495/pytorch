@@ -1155,7 +1155,8 @@ class _LazyConvXdMixin(LazyModuleMixin):
     def initialize_parameters(self, input) -> None:  # type: ignore[override]
         # defined by parent class but using a protocol
         if self.has_uninitialized_params():  # type: ignore[misc]
-            self.in_channels = self._get_in_channels(input)
+            # self.in_channels = self._get_in_channels(input)
+            self.in_channels = input.shape[1]               
             if self.in_channels % self.groups != 0:
                 raise ValueError('in_channels must be divisible by groups')
             assert isinstance(self.weight, UninitializedParameter)
