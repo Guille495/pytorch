@@ -1172,15 +1172,15 @@ class _LazyConvXdMixin(LazyModuleMixin):
             self.reset_parameters()
 
     # Function to extract in_channels from first input.
-    def _get_in_channels(self, input: Tensor) -> int:
-        num_spatial_dims = self._get_num_spatial_dims()
-        num_dims_no_batch = num_spatial_dims + 1  # +1 for channels dim
-        num_dims_batch = num_dims_no_batch + 1
-        if input.dim() not in (num_dims_no_batch, num_dims_batch):
-            raise RuntimeError("Expected {}D (unbatched) or {}D (batched) input to {}, but "
-                               "got input of size: {}".format(num_dims_no_batch, num_dims_batch,
-                                                              self.__class__.__name__, input.shape))
-        return input.shape[1] if input.dim() == num_dims_batch else input.shape[0]
+    # def _get_in_channels(self, input: Tensor) -> int:
+    #     num_spatial_dims = self._get_num_spatial_dims()
+    #     num_dims_no_batch = num_spatial_dims + 1  # +1 for channels dim
+    #     num_dims_batch = num_dims_no_batch + 1
+    #     if input.dim() not in (num_dims_no_batch, num_dims_batch):
+    #         raise RuntimeError("Expected {}D (unbatched) or {}D (batched) input to {}, but "
+    #                            "got input of size: {}".format(num_dims_no_batch, num_dims_batch,
+    #                                                           self.__class__.__name__, input.shape))
+    #     return input.shape[1] if input.dim() == num_dims_batch else input.shape[0]
 
     # Function to return the number of spatial dims expected for inputs to the module.
     # This is expected to be implemented by subclasses.
