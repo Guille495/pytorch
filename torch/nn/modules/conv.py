@@ -1,3 +1,4 @@
+# -*- coding: utf-8 -*-
 import math
 import warnings
 
@@ -13,10 +14,6 @@ from torch._torch_docs import reproducibility_notes
 
 from ..common_types import _size_1_t, _size_2_t, _size_3_t
 from typing import Optional, List, Tuple, Union
-
-__all__ = ['Conv1d', 'Conv2d', 'Conv3d', 'ConvTranspose1d', 'ConvTranspose2d', 'ConvTranspose3d',
-           'LazyConv1d', 'LazyConv2d', 'LazyConv3d', 'LazyConvTranspose1d', 'LazyConvTranspose2d',
-           'LazyConvTranspose3d']
 
 convolution_notes = \
     {"groups_note": r"""* :attr:`groups` controls the connections between inputs and outputs.
@@ -50,10 +47,10 @@ class _ConvNd(Module):
                      'out_channels', 'kernel_size']
     __annotations__ = {'bias': Optional[torch.Tensor]}
 
-    def _conv_forward(self, input: Tensor, weight: Tensor, bias: Optional[Tensor]) -> Tensor:  # type: ignore[empty-body]
+    def _conv_forward(self, input: Tensor, weight: Tensor, bias: Optional[Tensor]) -> Tensor:
         ...
 
-    in_channels: int
+    _in_channels: int
     _reversed_padding_repeated_twice: List[int]
     out_channels: int
     kernel_size: Tuple[int, ...]
@@ -82,9 +79,7 @@ class _ConvNd(Module):
                  device=None,
                  dtype=None) -> None:
         factory_kwargs = {'device': device, 'dtype': dtype}
-        super().__init__()
-        if groups <= 0:
-            raise ValueError('groups must be a positive integer')
+        super(_ConvNd, self).__init__()
         if in_channels % groups != 0:
             raise ValueError('in_channels must be divisible by groups')
         if out_channels % groups != 0:
@@ -93,13 +88,15 @@ class _ConvNd(Module):
         if isinstance(padding, str):
             if padding not in valid_padding_strings:
                 raise ValueError(
-                    f"Invalid padding string {padding!r}, should be one of {valid_padding_strings}")
+                    "Invalid padding string {!r}, should be one of {}".format(
+                        padding, valid_padding_strings))
             if padding == 'same' and any(s != 1 for s in stride):
                 raise ValueError("padding='same' is not supported for strided convolutions")
 
         valid_padding_modes = {'zeros', 'reflect', 'replicate', 'circular'}
         if padding_mode not in valid_padding_modes:
-            raise ValueError(f"padding_mode must be one of {valid_padding_modes}, but got padding_mode='{padding_mode}'")
+            raise ValueError("padding_mode must be one of {}, but got padding_mode='{}'".format(
+                valid_padding_modes, padding_mode))
         self.in_channels = in_channels
         self.out_channels = out_channels
         self.kernel_size = kernel_size
@@ -147,9 +144,8 @@ class _ConvNd(Module):
         init.kaiming_uniform_(self.weight, a=math.sqrt(5))
         if self.bias is not None:
             fan_in, _ = init._calculate_fan_in_and_fan_out(self.weight)
-            if fan_in != 0:
-                bound = 1 / math.sqrt(fan_in)
-                init.uniform_(self.bias, -bound, bound)
+            bound = 1 / math.sqrt(fan_in)
+            init.uniform_(self.bias, -bound, bound)
 
     def extra_repr(self):
         s = ('{in_channels}, {out_channels}, kernel_size={kernel_size}'
@@ -169,7 +165,7 @@ class _ConvNd(Module):
         return s.format(**self.__dict__)
 
     def __setstate__(self, state):
-        super().__setstate__(state)
+        super(_ConvNd, self).__setstate__(state)
         if not hasattr(self, 'padding_mode'):
             self.padding_mode = 'zeros'
 
@@ -194,8 +190,6 @@ class Conv1d(_ConvNd):
 
     This module supports :ref:`TensorFloat32<tf32_on_ampere>`.
 
-    On certain ROCm devices, when using float16 inputs this module will use :ref:`different precision<fp16_on_mi200>` for backward.
-
     * :attr:`stride` controls the stride for the cross-correlation, a single
       number or a one-element tuple.
 
@@ -219,9 +213,6 @@ class Conv1d(_ConvNd):
         the input so the output has the shape as the input. However, this mode
         doesn't support any stride values other than 1.
 
-    Note:
-        This module supports complex data types i.e. ``complex32, complex64, complex128``.
-
     Args:
         in_channels (int): Number of channels in the input image
         out_channels (int): Number of channels produced by the convolution
@@ -229,7 +220,7 @@ class Conv1d(_ConvNd):
         stride (int or tuple, optional): Stride of the convolution. Default: 1
         padding (int, tuple or str, optional): Padding added to both sides of
             the input. Default: 0
-        padding_mode (str, optional): ``'zeros'``, ``'reflect'``,
+        padding_mode (string, optional): ``'zeros'``, ``'reflect'``,
             ``'replicate'`` or ``'circular'``. Default: ``'zeros'``
         dilation (int or tuple, optional): Spacing between kernel
             elements. Default: 1
@@ -241,8 +232,8 @@ class Conv1d(_ConvNd):
     """.format(**reproducibility_notes, **convolution_notes) + r"""
 
     Shape:
-        - Input: :math:`(N, C_{in}, L_{in})` or :math:`(C_{in}, L_{in})`
-        - Output: :math:`(N, C_{out}, L_{out})` or :math:`(C_{out}, L_{out})`, where
+        - Input: :math:`(N, C_{in}, L_{in})`
+        - Output: :math:`(N, C_{out}, L_{out})` where
 
           .. math::
               L_{out} = \left\lfloor\frac{L_{in} + 2 \times \text{padding} - \text{dilation}
@@ -294,7 +285,7 @@ class Conv1d(_ConvNd):
         stride_ = _single(stride)
         padding_ = padding if isinstance(padding, str) else _single(padding)
         dilation_ = _single(dilation)
-        super().__init__(
+        super(Conv1d, self).__init__(
             in_channels, out_channels, kernel_size_, stride_, padding_, dilation_,
             False, _single(0), groups, bias, padding_mode, **factory_kwargs)
 
@@ -331,13 +322,11 @@ class Conv2d(_ConvNd):
 
     This module supports :ref:`TensorFloat32<tf32_on_ampere>`.
 
-    On certain ROCm devices, when using float16 inputs this module will use :ref:`different precision<fp16_on_mi200>` for backward.
-
     * :attr:`stride` controls the stride for the cross-correlation, a single
       number or a tuple.
 
     * :attr:`padding` controls the amount of padding applied to the input. It
-      can be either a string {{'valid', 'same'}} or an int / a tuple of ints giving the
+      can be either a string {{'valid', 'same'}} or a tuple of ints giving the
       amount of implicit padding applied on both sides.
 
     * :attr:`dilation` controls the spacing between the kernel points; also
@@ -363,9 +352,6 @@ class Conv2d(_ConvNd):
         the input so the output has the shape as the input. However, this mode
         doesn't support any stride values other than 1.
 
-    Note:
-        This module supports complex data types i.e. ``complex32, complex64, complex128``.
-
     Args:
         in_channels (int): Number of channels in the input image
         out_channels (int): Number of channels produced by the convolution
@@ -373,7 +359,7 @@ class Conv2d(_ConvNd):
         stride (int or tuple, optional): Stride of the convolution. Default: 1
         padding (int, tuple or str, optional): Padding added to all four sides of
             the input. Default: 0
-        padding_mode (str, optional): ``'zeros'``, ``'reflect'``,
+        padding_mode (string, optional): ``'zeros'``, ``'reflect'``,
             ``'replicate'`` or ``'circular'``. Default: ``'zeros'``
         dilation (int or tuple, optional): Spacing between kernel elements. Default: 1
         groups (int, optional): Number of blocked connections from input
@@ -383,8 +369,8 @@ class Conv2d(_ConvNd):
     """.format(**reproducibility_notes, **convolution_notes) + r"""
 
     Shape:
-        - Input: :math:`(N, C_{in}, H_{in}, W_{in})` or :math:`(C_{in}, H_{in}, W_{in})`
-        - Output: :math:`(N, C_{out}, H_{out}, W_{out})` or :math:`(C_{out}, H_{out}, W_{out})`, where
+        - Input: :math:`(N, C_{in}, H_{in}, W_{in})`
+        - Output: :math:`(N, C_{out}, H_{out}, W_{out})` where
 
           .. math::
               H_{out} = \left\lfloor\frac{H_{in}  + 2 \times \text{padding}[0] - \text{dilation}[0]
@@ -444,7 +430,7 @@ class Conv2d(_ConvNd):
         stride_ = _pair(stride)
         padding_ = padding if isinstance(padding, str) else _pair(padding)
         dilation_ = _pair(dilation)
-        super().__init__(
+        super(Conv2d, self).__init__(
             in_channels, out_channels, kernel_size_, stride_, padding_, dilation_,
             False, _pair(0), groups, bias, padding_mode, **factory_kwargs)
 
@@ -475,8 +461,6 @@ class Conv3d(_ConvNd):
 
     This module supports :ref:`TensorFloat32<tf32_on_ampere>`.
 
-    On certain ROCm devices, when using float16 inputs this module will use :ref:`different precision<fp16_on_mi200>` for backward.
-
     * :attr:`stride` controls the stride for the cross-correlation.
 
     * :attr:`padding` controls the amount of padding applied to the input. It
@@ -505,9 +489,6 @@ class Conv3d(_ConvNd):
         the input so the output has the shape as the input. However, this mode
         doesn't support any stride values other than 1.
 
-    Note:
-        This module supports complex data types i.e. ``complex32, complex64, complex128``.
-
     Args:
         in_channels (int): Number of channels in the input image
         out_channels (int): Number of channels produced by the convolution
@@ -515,16 +496,15 @@ class Conv3d(_ConvNd):
         stride (int or tuple, optional): Stride of the convolution. Default: 1
         padding (int, tuple or str, optional): Padding added to all six sides of
             the input. Default: 0
-        padding_mode (str, optional): ``'zeros'``, ``'reflect'``, ``'replicate'`` or ``'circular'``. Default: ``'zeros'``
+        padding_mode (string, optional): ``'zeros'``, ``'reflect'``, ``'replicate'`` or ``'circular'``. Default: ``'zeros'``
         dilation (int or tuple, optional): Spacing between kernel elements. Default: 1
         groups (int, optional): Number of blocked connections from input channels to output channels. Default: 1
         bias (bool, optional): If ``True``, adds a learnable bias to the output. Default: ``True``
     """.format(**reproducibility_notes, **convolution_notes) + r"""
 
     Shape:
-        - Input: :math:`(N, C_{in}, D_{in}, H_{in}, W_{in})` or :math:`(C_{in}, D_{in}, H_{in}, W_{in})`
-        - Output: :math:`(N, C_{out}, D_{out}, H_{out}, W_{out})` or :math:`(C_{out}, D_{out}, H_{out}, W_{out})`,
-          where
+        - Input: :math:`(N, C_{in}, D_{in}, H_{in}, W_{in})`
+        - Output: :math:`(N, C_{out}, D_{out}, H_{out}, W_{out})` where
 
           .. math::
               D_{out} = \left\lfloor\frac{D_{in} + 2 \times \text{padding}[0] - \text{dilation}[0]
@@ -585,7 +565,7 @@ class Conv3d(_ConvNd):
         stride_ = _triple(stride)
         padding_ = padding if isinstance(padding, str) else _triple(padding)
         dilation_ = _triple(dilation)
-        super().__init__(
+        super(Conv3d, self).__init__(
             in_channels, out_channels, kernel_size_, stride_, padding_, dilation_,
             False, _triple(0), groups, bias, padding_mode, **factory_kwargs)
 
@@ -616,10 +596,10 @@ class _ConvTransposeNd(_ConvNd):
                  padding, dilation, transposed, output_padding,
                  groups, bias, padding_mode, device=None, dtype=None) -> None:
         if padding_mode != 'zeros':
-            raise ValueError(f'Only "zeros" padding mode is supported for {self.__class__.__name__}')
+            raise ValueError('Only "zeros" padding mode is supported for {}'.format(self.__class__.__name__))
 
         factory_kwargs = {'device': device, 'dtype': dtype}
-        super().__init__(
+        super(_ConvTransposeNd, self).__init__(
             in_channels, out_channels, kernel_size, stride,
             padding, dilation, transposed, output_padding,
             groups, bias, padding_mode, **factory_kwargs)
@@ -628,24 +608,22 @@ class _ConvTransposeNd(_ConvNd):
     # compatibility
     def _output_padding(self, input: Tensor, output_size: Optional[List[int]],
                         stride: List[int], padding: List[int], kernel_size: List[int],
-                        num_spatial_dims: int, dilation: Optional[List[int]] = None) -> List[int]:
+                        dilation: Optional[List[int]] = None) -> List[int]:
         if output_size is None:
             ret = _single(self.output_padding)  # converting to list if was not already
         else:
-            has_batch_dim = input.dim() == num_spatial_dims + 2
-            num_non_spatial_dims = 2 if has_batch_dim else 1
-            if len(output_size) == num_non_spatial_dims + num_spatial_dims:
-                output_size = output_size[num_non_spatial_dims:]
-            if len(output_size) != num_spatial_dims:
+            k = input.dim() - 2
+            if len(output_size) == k + 2:
+                output_size = output_size[2:]
+            if len(output_size) != k:
                 raise ValueError(
-                    "ConvTranspose{}D: for {}D input, output_size must have {} or {} elements (got {})"
-                    .format(num_spatial_dims, input.dim(), num_spatial_dims,
-                            num_non_spatial_dims + num_spatial_dims, len(output_size)))
+                    "output_size must have {} or {} elements (got {})"
+                    .format(k, k + 2, len(output_size)))
 
             min_sizes = torch.jit.annotate(List[int], [])
             max_sizes = torch.jit.annotate(List[int], [])
-            for d in range(num_spatial_dims):
-                dim_size = ((input.size(d + num_non_spatial_dims) - 1) * stride[d] -
+            for d in range(k):
+                dim_size = ((input.size(d + 2) - 1) * stride[d] -
                             2 * padding[d] +
                             (dilation[d] if dilation is not None else 1) * (kernel_size[d] - 1) + 1)
                 min_sizes.append(dim_size)
@@ -656,12 +634,13 @@ class _ConvTransposeNd(_ConvNd):
                 min_size = min_sizes[i]
                 max_size = max_sizes[i]
                 if size < min_size or size > max_size:
-                    raise ValueError(
-                        f"requested an output size of {output_size}, but valid sizes range "
-                        f"from {min_sizes} to {max_sizes} (for an input of {input.size()[2:]})")
+                    raise ValueError((
+                        "requested an output size of {}, but valid sizes range "
+                        "from {} to {} (for an input of {})").format(
+                            output_size, min_sizes, max_sizes, input.size()[2:]))
 
             res = torch.jit.annotate(List[int], [])
-            for d in range(num_spatial_dims):
+            for d in range(k):
                 res.append(output_size[d] - min_sizes[d])
 
             ret = res
@@ -679,8 +658,6 @@ class ConvTranspose1d(_ConvTransposeNd):
     `here`_ and the `Deconvolutional Networks`_ paper.
 
     This module supports :ref:`TensorFloat32<tf32_on_ampere>`.
-
-    On certain ROCm devices, when using float16 inputs this module will use :ref:`different precision<fp16_on_mi200>` for backward.
 
     * :attr:`stride` controls the stride for the cross-correlation.
 
@@ -732,8 +709,8 @@ class ConvTranspose1d(_ConvTransposeNd):
     """.format(**reproducibility_notes, **convolution_notes) + r"""
 
     Shape:
-        - Input: :math:`(N, C_{in}, L_{in})` or :math:`(C_{in}, L_{in})`
-        - Output: :math:`(N, C_{out}, L_{out})` or :math:`(C_{out}, L_{out})`, where
+        - Input: :math:`(N, C_{in}, L_{in})`
+        - Output: :math:`(N, C_{out}, L_{out})` where
 
           .. math::
               L_{out} = (L_{in} - 1) \times \text{stride} - 2 \times \text{padding} + \text{dilation}
@@ -779,7 +756,7 @@ class ConvTranspose1d(_ConvTransposeNd):
         padding = _single(padding)
         dilation = _single(dilation)
         output_padding = _single(output_padding)
-        super().__init__(
+        super(ConvTranspose1d, self).__init__(
             in_channels, out_channels, kernel_size, stride, padding, dilation,
             True, output_padding, groups, bias, padding_mode, **factory_kwargs)
 
@@ -790,10 +767,8 @@ class ConvTranspose1d(_ConvTransposeNd):
         assert isinstance(self.padding, tuple)
         # One cannot replace List by Tuple or Sequence in "_output_padding" because
         # TorchScript does not support `Sequence[T]` or `Tuple[T, ...]`.
-        num_spatial_dims = 1
         output_padding = self._output_padding(
-            input, output_size, self.stride, self.padding, self.kernel_size,  # type: ignore[arg-type]
-            num_spatial_dims, self.dilation)  # type: ignore[arg-type]
+            input, output_size, self.stride, self.padding, self.kernel_size, self.dilation)  # type: ignore[arg-type]
         return F.conv_transpose1d(
             input, self.weight, self.bias, self.stride, self.padding,
             output_padding, self.groups, self.dilation)
@@ -810,8 +785,6 @@ class ConvTranspose2d(_ConvTransposeNd):
     `here`_ and the `Deconvolutional Networks`_ paper.
 
     This module supports :ref:`TensorFloat32<tf32_on_ampere>`.
-
-    On certain ROCm devices, when using float16 inputs this module will use :ref:`different precision<fp16_on_mi200>` for backward.
 
     * :attr:`stride` controls the stride for the cross-correlation.
 
@@ -864,8 +837,8 @@ class ConvTranspose2d(_ConvTransposeNd):
     """.format(**reproducibility_notes, **convolution_notes) + r"""
 
     Shape:
-        - Input: :math:`(N, C_{in}, H_{in}, W_{in})` or :math:`(C_{in}, H_{in}, W_{in})`
-        - Output: :math:`(N, C_{out}, H_{out}, W_{out})` or :math:`(C_{out}, H_{out}, W_{out})`, where
+        - Input: :math:`(N, C_{in}, H_{in}, W_{in})`
+        - Output: :math:`(N, C_{out}, H_{out}, W_{out})` where
 
         .. math::
               H_{out} = (H_{in} - 1) \times \text{stride}[0] - 2 \times \text{padding}[0] + \text{dilation}[0]
@@ -922,7 +895,7 @@ class ConvTranspose2d(_ConvTransposeNd):
         output_padding: _size_2_t = 0,
         groups: int = 1,
         bias: bool = True,
-        dilation: _size_2_t = 1,
+        dilation: int = 1,
         padding_mode: str = 'zeros',
         device=None,
         dtype=None
@@ -933,7 +906,7 @@ class ConvTranspose2d(_ConvTransposeNd):
         padding = _pair(padding)
         dilation = _pair(dilation)
         output_padding = _pair(output_padding)
-        super().__init__(
+        super(ConvTranspose2d, self).__init__(
             in_channels, out_channels, kernel_size, stride, padding, dilation,
             True, output_padding, groups, bias, padding_mode, **factory_kwargs)
 
@@ -944,10 +917,8 @@ class ConvTranspose2d(_ConvTransposeNd):
         assert isinstance(self.padding, tuple)
         # One cannot replace List by Tuple or Sequence in "_output_padding" because
         # TorchScript does not support `Sequence[T]` or `Tuple[T, ...]`.
-        num_spatial_dims = 2
         output_padding = self._output_padding(
-            input, output_size, self.stride, self.padding, self.kernel_size,  # type: ignore[arg-type]
-            num_spatial_dims, self.dilation)  # type: ignore[arg-type]
+            input, output_size, self.stride, self.padding, self.kernel_size, self.dilation)  # type: ignore[arg-type]
 
         return F.conv_transpose2d(
             input, self.weight, self.bias, self.stride, self.padding,
@@ -967,8 +938,6 @@ class ConvTranspose3d(_ConvTransposeNd):
     `here`_ and the `Deconvolutional Networks`_ paper.
 
     This module supports :ref:`TensorFloat32<tf32_on_ampere>`.
-
-    On certain ROCm devices, when using float16 inputs this module will use :ref:`different precision<fp16_on_mi200>` for backward.
 
     * :attr:`stride` controls the stride for the cross-correlation.
 
@@ -1021,9 +990,8 @@ class ConvTranspose3d(_ConvTransposeNd):
     """.format(**reproducibility_notes, **convolution_notes) + r"""
 
     Shape:
-        - Input: :math:`(N, C_{in}, D_{in}, H_{in}, W_{in})` or :math:`(C_{in}, D_{in}, H_{in}, W_{in})`
-        - Output: :math:`(N, C_{out}, D_{out}, H_{out}, W_{out})` or
-          :math:`(C_{out}, D_{out}, H_{out}, W_{out})`, where
+        - Input: :math:`(N, C_{in}, D_{in}, H_{in}, W_{in})`
+        - Output: :math:`(N, C_{out}, D_{out}, H_{out}, W_{out})` where
 
         .. math::
               D_{out} = (D_{in} - 1) \times \text{stride}[0] - 2 \times \text{padding}[0] + \text{dilation}[0]
@@ -1085,7 +1053,7 @@ class ConvTranspose3d(_ConvTransposeNd):
         padding = _triple(padding)
         dilation = _triple(dilation)
         output_padding = _triple(output_padding)
-        super().__init__(
+        super(ConvTranspose3d, self).__init__(
             in_channels, out_channels, kernel_size, stride, padding, dilation,
             True, output_padding, groups, bias, padding_mode, **factory_kwargs)
 
@@ -1096,10 +1064,8 @@ class ConvTranspose3d(_ConvTransposeNd):
         assert isinstance(self.padding, tuple)
         # One cannot replace List by Tuple or Sequence in "_output_padding" because
         # TorchScript does not support `Sequence[T]` or `Tuple[T, ...]`.
-        num_spatial_dims = 3
         output_padding = self._output_padding(
-            input, output_size, self.stride, self.padding, self.kernel_size,  # type: ignore[arg-type]
-            num_spatial_dims, self.dilation)  # type: ignore[arg-type]
+            input, output_size, self.stride, self.padding, self.kernel_size, self.dilation)  # type: ignore[arg-type]
 
         return F.conv_transpose3d(
             input, self.weight, self.bias, self.stride, self.padding,
@@ -1126,7 +1092,7 @@ class _ConvTransposeMixin(_ConvTransposeNd):
         warnings.warn(
             "_ConvTransposeMixin is a deprecated internal class. "
             "Please consider using public APIs.")
-        super().__init__(*args, **kwargs)
+        super(_ConvTransposeMixin, self).__init__(*args, **kwargs)
 
 
 # TODO: Conv2dLocal
@@ -1155,7 +1121,7 @@ class _LazyConvXdMixin(LazyModuleMixin):
     def initialize_parameters(self, input) -> None:  # type: ignore[override]
         # defined by parent class but using a protocol
         if self.has_uninitialized_params():  # type: ignore[misc]
-            self.in_channels = self._get_in_channels(input)
+            self.in_channels = input.shape[1]
             if self.in_channels % self.groups != 0:
                 raise ValueError('in_channels must be divisible by groups')
             assert isinstance(self.weight, UninitializedParameter)
@@ -1169,22 +1135,6 @@ class _LazyConvXdMixin(LazyModuleMixin):
                 assert isinstance(self.bias, UninitializedParameter)
                 self.bias.materialize((self.out_channels,))
             self.reset_parameters()
-
-    # Function to extract in_channels from first input.
-    def _get_in_channels(self, input: Tensor) -> int:
-        num_spatial_dims = self._get_num_spatial_dims()
-        num_dims_no_batch = num_spatial_dims + 1  # +1 for channels dim
-        num_dims_batch = num_dims_no_batch + 1
-        if input.dim() not in (num_dims_no_batch, num_dims_batch):
-            raise RuntimeError("Expected {}D (unbatched) or {}D (batched) input to {}, but "
-                               "got input of size: {}".format(num_dims_no_batch, num_dims_batch,
-                                                              self.__class__.__name__, input.shape))
-        return input.shape[1] if input.dim() == num_dims_batch else input.shape[0]
-
-    # Function to return the number of spatial dims expected for inputs to the module.
-    # This is expected to be implemented by subclasses.
-    def _get_num_spatial_dims(self) -> int:
-        raise NotImplementedError()
 
 
 # LazyConv1d defines weight as a Tensor but derived class defines it as UnitializeParameter
@@ -1203,7 +1153,7 @@ class LazyConv1d(_LazyConvXdMixin, Conv1d):  # type: ignore[misc]
         stride (int or tuple, optional): Stride of the convolution. Default: 1
         padding (int or tuple, optional): Zero-padding added to both sides of
             the input. Default: 0
-        padding_mode (str, optional): ``'zeros'``, ``'reflect'``,
+        padding_mode (string, optional): ``'zeros'``, ``'reflect'``,
             ``'replicate'`` or ``'circular'``. Default: ``'zeros'``
         dilation (int or tuple, optional): Spacing between kernel
             elements. Default: 1
@@ -1252,9 +1202,6 @@ class LazyConv1d(_LazyConvXdMixin, Conv1d):  # type: ignore[misc]
         if bias:
             self.bias = UninitializedParameter(**factory_kwargs)
 
-    def _get_num_spatial_dims(self) -> int:
-        return 1
-
 
 # LazyConv2d defines weight as a Tensor but derived class defines it as UnitializeParameter
 class LazyConv2d(_LazyConvXdMixin, Conv2d):  # type: ignore[misc]
@@ -1272,7 +1219,7 @@ class LazyConv2d(_LazyConvXdMixin, Conv2d):  # type: ignore[misc]
         stride (int or tuple, optional): Stride of the convolution. Default: 1
         padding (int or tuple, optional): Zero-padding added to both sides of
             the input. Default: 0
-        padding_mode (str, optional): ``'zeros'``, ``'reflect'``,
+        padding_mode (string, optional): ``'zeros'``, ``'reflect'``,
             ``'replicate'`` or ``'circular'``. Default: ``'zeros'``
         dilation (int or tuple, optional): Spacing between kernel
             elements. Default: 1
@@ -1321,9 +1268,6 @@ class LazyConv2d(_LazyConvXdMixin, Conv2d):  # type: ignore[misc]
         if bias:
             self.bias = UninitializedParameter(**factory_kwargs)
 
-    def _get_num_spatial_dims(self) -> int:
-        return 2
-
 
 # LazyConv3d defines weight as a Tensor but derived class defines it as UnitializeParameter
 class LazyConv3d(_LazyConvXdMixin, Conv3d):  # type: ignore[misc]
@@ -1341,7 +1285,7 @@ class LazyConv3d(_LazyConvXdMixin, Conv3d):  # type: ignore[misc]
         stride (int or tuple, optional): Stride of the convolution. Default: 1
         padding (int or tuple, optional): Zero-padding added to both sides of
             the input. Default: 0
-        padding_mode (str, optional): ``'zeros'``, ``'reflect'``,
+        padding_mode (string, optional): ``'zeros'``, ``'reflect'``,
             ``'replicate'`` or ``'circular'``. Default: ``'zeros'``
         dilation (int or tuple, optional): Spacing between kernel
             elements. Default: 1
@@ -1389,9 +1333,6 @@ class LazyConv3d(_LazyConvXdMixin, Conv3d):  # type: ignore[misc]
         self.out_channels = out_channels
         if bias:
             self.bias = UninitializedParameter(**factory_kwargs)
-
-    def _get_num_spatial_dims(self) -> int:
-        return 3
 
 
 # LazyConvTranspose1d defines weight as a Tensor but derived class defines it as UnitializeParameter
@@ -1458,9 +1399,6 @@ class LazyConvTranspose1d(_LazyConvXdMixin, ConvTranspose1d):  # type: ignore[mi
         if bias:
             self.bias = UninitializedParameter(**factory_kwargs)
 
-    def _get_num_spatial_dims(self) -> int:
-        return 1
-
 
 # LazyConvTranspose2d defines weight as a Tensor but derived class defines it as UnitializeParameter
 class LazyConvTranspose2d(_LazyConvXdMixin, ConvTranspose2d):  # type: ignore[misc]
@@ -1526,9 +1464,6 @@ class LazyConvTranspose2d(_LazyConvXdMixin, ConvTranspose2d):  # type: ignore[mi
         if bias:
             self.bias = UninitializedParameter(**factory_kwargs)
 
-    def _get_num_spatial_dims(self) -> int:
-        return 2
-
 
 # LazyConvTranspose3d defines weight as a Tensor but derived class defines it as UnitializeParameter
 class LazyConvTranspose3d(_LazyConvXdMixin, ConvTranspose3d):  # type: ignore[misc]
@@ -1593,6 +1528,3 @@ class LazyConvTranspose3d(_LazyConvXdMixin, ConvTranspose3d):  # type: ignore[mi
         self.out_channels = out_channels
         if bias:
             self.bias = UninitializedParameter(**factory_kwargs)
-
-    def _get_num_spatial_dims(self) -> int:
-        return 3
